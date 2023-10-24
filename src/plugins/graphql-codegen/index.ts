@@ -28,27 +28,35 @@ const findPluginDependencies: GenericPluginCallback = async (configFilePath, opt
 
   if (!localConfig) return [];
 
-  const generateSet = Object.values(localConfig.generates);
+  if (!localConfig.generates) {
+    return [];
+  }
+  // Make sure the parser doesn't trip on itself when there is non-standard config
+  try {
+    const generateSet = Object.values(localConfig.generates);
 
-  const configurationOutput = generateSet.filter(isConfigurationOutput);
+    const configurationOutput = generateSet.filter(isConfigurationOutput);
 
-  const presets = configurationOutput
-    .map(configOutput => (configOutput.preset ? configOutput.preset : undefined))
-    .filter((preset): preset is PresetNames => typeof preset === 'string')
-    .map(presetName => `@graphql-codegen/${presetName}${presetName.endsWith('-preset') ? '' : '-preset'}`);
+    const presets = configurationOutput
+      .map(configOutput => (configOutput.preset ? configOutput.preset : undefined))
+      .filter((preset): preset is PresetNames => typeof preset === 'string')
+      .map(presetName => `@graphql-codegen/${presetName}${presetName.endsWith('-preset') ? '' : '-preset'}`);
 
-  const flatPlugins = generateSet
-    .filter((config): config is ConfiguredPlugin => !isConfigurationOutput(config))
-    .map(item => Object.keys(item))
-    .flat()
-    .map(plugin => `@graphql-codegen/${plugin}`);
+    const flatPlugins = generateSet
+      .filter((config): config is ConfiguredPlugin => !isConfigurationOutput(config))
+      .map(item => Object.keys(item))
+      .flat()
+      .map(plugin => `@graphql-codegen/${plugin}`);
 
-  const nestedPlugins = configurationOutput
-    .map(configOutput => (configOutput.plugins ? configOutput.plugins : []))
-    .flat()
-    .map(plugin => `@graphql-codegen/${plugin}`);
+    const nestedPlugins = configurationOutput
+      .map(configOutput => (configOutput.plugins ? configOutput.plugins : []))
+      .flat()
+      .map(plugin => `@graphql-codegen/${plugin}`);
 
-  return [...presets, ...flatPlugins, ...nestedPlugins];
+    return [...presets, ...flatPlugins, ...nestedPlugins];
+  } catch {
+    return [];
+  }
 };
 
 export const findDependencies = timerify(findPluginDependencies);
